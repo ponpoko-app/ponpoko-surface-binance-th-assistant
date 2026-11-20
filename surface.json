@@ -1,0 +1,13 @@
+{
+  "id": "binance-th-assistant",
+  "name": "Binance TH Assistant",
+  "version": "0.1.0",
+  "entry": "index.html",
+  "description": "Thai baht spot order tickets, paper trading, and cross-market momentum.",
+  "contributes": [{ "slot": "nav", "title": "Binance TH", "icon": "generic" }],
+  "backend": { "command": "bin/binance-th-backend" },
+  "methods": [
+    "market.snapshot", "market.refresh", "trade.state", "trade.quote", "trade.preview",
+    "trade.submit", "trade.settings", "trade.halt", "trade.resume", "trade.reconcile"
+  ]
+}

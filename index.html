@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="th">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="จัดอันดับเหรียญจาก Binance Global และตรวจใบคำสั่งสำหรับตลาดเงินบาท">
+  <title>Binance TH Assistant</title>
+  <link rel="stylesheet" href="sdk-tokens.css">
+  <link rel="stylesheet" href="sdk-components.css">
+  <link rel="stylesheet" href="surface.css">
+  <script type="module" src="main.js"></script>
+</head>
+<body>
+  <main class="workspace">
+    <header class="topbar">
+      <div class="heading">
+        <div class="mark" aria-hidden="true"><i></i><i></i><i></i></div>
+        <div>
+          <h1>Binance TH Assistant</h1>
+          <p class="byline">อันดับจาก Binance Global สำหรับตลาดเงินบาท</p>
+        </div>
+      </div>
+      <nav class="modes" aria-label="โหมดซื้อขาย">
+        <button type="button" data-mode="paper" aria-pressed="true" disabled>เงินจำลอง</button>
+        <button type="button" data-mode="confirm" aria-pressed="false">เงินจริง</button>
+      </nav>
+    </header>
+
+    <noscript><p class="notice">เปิด JavaScript เพื่ออ่านตลาดและจัดการคำสั่งซื้อขาย</p></noscript>
+    <div id="banner" class="notice" role="status" aria-live="polite" hidden></div>
+
+    <section class="summary" aria-label="สถานะการซื้อขาย">
+      <div><span>เงินที่ใช้ได้</span><strong id="cash">…</strong></div>
+      <div><span>กำไรขาดทุนสุทธิ</span><strong id="net">…</strong></div>
+      <div><span>กำไรขาดทุนวันนี้</span><strong id="daily">…</strong></div>
+      <div class="summary-actions">
+        <button id="halt" type="button" class="button stop" disabled>หยุดเปิดไม้ใหม่</button>
+        <button id="settings-toggle" type="button" class="button secondary" aria-expanded="false" aria-controls="settings" disabled>ตั้งค่า</button>
+      </div>
+    </section>
+
+    <section id="settings" class="well" aria-labelledby="settings-heading" hidden>
+      <h2 id="settings-heading">เพดานความเสี่ยง</h2>
+      <p id="connection" class="quiet"></p>
+      <p id="live-help" class="quiet" hidden>เริ่มจาก Keychain บน macOS ตามคู่มือ แล้วกลับมาโหลดสถานะใหม่ <a id="venue-link" href="https://www.binance.th/" target="_blank" rel="noreferrer">เปิด Binance TH</a></p>
+      <form id="caps" class="caps-form">
+        <label>ต่อคำสั่ง (บาท)<input name="order" inputmode="decimal" required></label>
+        <label>ต่อสถานะ (บาท)<input name="exposure" inputmode="decimal" required></label>
+        <label>ขาดทุนต่อแผน (บาท)<input name="planLoss" inputmode="decimal" required></label>
+        <label>ขาดทุนต่อวัน (บาท)<input name="dailyLoss" inputmode="decimal" required></label>
+        <button type="submit" class="button primary">บันทึกเพดาน</button>
+      </form>
+    </section>
+
+    <div class="desk">
+      <section class="market" aria-labelledby="market-heading">
+        <div class="section-heading">
+          <div>
+            <h2 id="market-heading">อันดับเหรียญ 30 วัน</h2>
+            <p id="market-date" class="quiet">ผลตอบแทนเทียบกับ Bitcoin</p>
+          </div>
+          <div class="refresh-control"><small id="market-refresh-status" class="quiet" role="status" hidden></small><button id="refresh" type="button" class="button secondary" disabled>โหลดใหม่</button></div>
+        </div>
+        <div id="market-status" class="market-status" role="status">กำลังเชื่อมต่อ Ponpoko</div>
+        <p id="market-scroll" class="quiet scroll-note" hidden></p>
+        <div id="market-table" class="table-holder" role="region" aria-label="ตารางอันดับเหรียญ" tabindex="0" hidden>
+          <table>
+            <thead><tr><th scope="col">อันดับ</th><th scope="col">คู่เงินบาท</th><th scope="col">ผล 30 วัน</th><th scope="col">เทียบ BTC</th><th scope="col" class="volume-column">มูลค่า 24 ชม.</th></tr></thead>
+            <tbody id="ranks"></tbody>
+          </table>
+        </div>
+        <details id="exclusions" class="quiet" hidden>
+          <summary id="exclusion-label"></summary>
+          <ul id="exclusion-items"></ul>
+        </details>
+      </section>
+
+      <section class="ticket-panel" aria-labelledby="ticket-heading">
+        <div class="section-heading">
+          <div>
+            <h2 id="ticket-heading">ใบคำสั่ง</h2>
+            <p id="ticket-mode" class="quiet">เงินจำลอง</p>
+          </div>
+        </div>
+        <p id="trade-status" class="order-status" role="status" hidden></p>
+        <form id="ticket-form">
+          <label for="symbol">คู่เงินบาท</label>
+          <select id="symbol" name="symbol" required disabled><option value="">กำลังอ่านคู่เงิน</option></select>
+          <div class="two">
+            <label>ฝั่งคำสั่ง<select id="side" name="side"><option value="BUY">ซื้อ</option><option value="SELL">ขายลดสถานะ</option></select></label>
+            <label>ราคา limit (บาท)<input id="limit" name="price" inputmode="decimal" placeholder="ราคาต่อเหรียญ" required></label>
+          </div>
+          <p id="quote" class="quiet quote" role="status"></p>
+          <div id="buy-fields" class="two">
+            <label>วงเงิน (บาท)<input id="budget" name="budget" inputmode="decimal" placeholder="ใช้เพดานที่ตั้งไว้"></label>
+            <label>จุดทบทวน (บาท)<input id="invalidation" name="invalidation" inputmode="decimal" placeholder="ราคาที่ควรทบทวน" required></label>
+          </div>
+          <div class="ticket-actions">
+            <button id="preview" type="submit" class="button primary" disabled>ตรวจใบคำสั่ง</button>
+            <button id="suggest" type="button" class="button secondary" disabled>ลองแผนจากอันดับ</button>
+          </div>
+          <p id="signal-note" class="quiet signal-note" hidden></p>
+        </form>
+        <section id="review" class="review" aria-labelledby="review-heading" hidden>
+          <div class="section-heading"><h3 id="review-heading">ตรวจและยืนยัน</h3><small id="expiry"></small></div>
+          <dl id="review-lines"></dl>
+          <p id="review-exit" class="quiet"></p>
+          <p id="review-copy" class="quiet">คำสั่งอาจจับคู่ได้บางส่วน ส่วนที่เหลือจะหมดอายุ</p>
+          <div class="ticket-actions">
+            <button id="submit" type="button" class="button primary" disabled>ยืนยัน</button>
+            <button id="dismiss" type="button" class="button secondary">กลับไปแก้ไข</button>
+          </div>
+        </section>
+      </section>
+    </div>
+
+    <section class="history" aria-labelledby="history-heading">
+      <div class="section-heading"><h2 id="history-heading">สถานะและประวัติ</h2><button id="sync" type="button" class="button secondary" disabled>โหลดสถานะ</button></div>
+      <div class="holding" id="holding" hidden></div>
+      <p id="history-status" class="quiet">ยังไม่มีรายการ</p>
+      <div id="history-table" class="table-holder" hidden>
+        <table>
+          <thead><tr><th scope="col">เวลา</th><th scope="col">คำสั่ง</th><th scope="col">จับคู่แล้ว</th><th scope="col">สถานะ</th><th scope="col">จัดการ</th></tr></thead>
+          <tbody id="orders"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,19 @@
+{
+  "dependencies": {
+    "@ponpoko-app/surface-sdk": "1.3.0",
+    "decimal.js": "10.6.0"
+  },
+  "devDependencies": {
+    "@types/bun": "1.4.4",
+    "typescript": "7.0.2"
+  },
+  "name": "ponpoko-surface-binance-th-assistant",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "build": "bun build.mjs",
+    "test": "bun test",
+    "check": "tsc --noEmit"
+  },
+  "private": true
+}
