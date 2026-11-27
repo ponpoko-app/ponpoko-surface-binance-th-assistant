@@ -6,6 +6,7 @@ import { amount, fail, Fault, positive } from "./util.ts";
 
 const TH = "https://api.binance.th";
 const GLOBAL = "https://data-api.binance.vision";
+const MAX_RESPONSE_BYTES = 4 * 1024 * 1024;
 const rejectedCodes = new Set([-1013, -1015, -1021, -1022, -1100, -1102, -1111, -1121, -2010, -2014, -2015]);
 const orderStates = new Set<OrderStatus>(["NEW", "PARTIALLY_FILLED", "FILLED", "EXPIRED", "CANCELED", "REJECTED"]);
 
@@ -42,6 +43,34 @@ export class ExchangeFault extends Fault {
   constructor(readonly exchangeCode: number | null, readonly status: number, readonly definite: boolean) {
     super("venue", definite ? "Binance TH ปฏิเสธคำสั่ง โปรดตรวจราคา จำนวน และสิทธิ์ของ key" : "ติดต่อ exchange ไม่สำเร็จหรือยังยืนยันผลไม่ได้");
   }
+}
+
+async function boundedJson(response: Response): Promise<unknown> {
+  if (!response.body) throw new Error("Missing exchange response");
+  if (Number(response.headers.get("content-length")) > MAX_RESPONSE_BYTES) {
+    void response.body.cancel().catch(() => {});
+    throw new Error("Exchange response exceeds its limit");
+  }
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder("utf-8", { fatal: true });
+  const chunks: string[] = [];
+  let length = 0;
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      length += value.length;
+      if (length > MAX_RESPONSE_BYTES) throw new Error("Exchange response exceeds its limit");
+      chunks.push(decoder.decode(value, { stream: true }));
+    }
+    chunks.push(decoder.decode());
+  } catch (error) {
+    void reader.cancel().catch(() => {});
+    throw error;
+  } finally {
+    reader.releaseLock();
+  }
+  return JSON.parse(chunks.join(""));
 }
 
 function orderResponse(data: Record<string, unknown>): VenueOrder {
@@ -83,7 +112,7 @@ export class Binance implements MarketVenue, TradingVenue {
       this.limitUntil.set(host, this.clock() + delay);
     }
     let data: unknown;
-    try { data = await response.json(); } catch { throw new ExchangeFault(null, response.status, false); }
+    try { data = await boundedJson(response); } catch { throw new ExchangeFault(null, response.status, false); }
     const code = data && typeof data === "object" && "code" in data ? Number(data.code) : null;
     if (!response.ok || (code !== null && code < 0)) {
       throw new ExchangeFault(code, response.status, response.status >= 400 && response.status < 418 && code !== null && rejectedCodes.has(code));

@@ -31,6 +31,18 @@ const buy: PreviewRequest = { mode: "paper", side: "BUY", symbol: pilotPair, app
   price: "500000", invalidation: "470000", budget: "400" };
 const sell: PreviewRequest = { mode: "paper", side: "SELL", symbol: pilotPair, approach: "manual", price: "499500" };
 
+test("oversized exchange payloads without a length header are cancelled", async () => {
+  let cancelled = false;
+  const stream = new ReadableStream<Uint8Array>({
+    start(controller) { controller.enqueue(new Uint8Array(4 * 1024 * 1024 + 1)); },
+    cancel() { cancelled = true; },
+  });
+  const fetcher = Object.assign(async () => new Response(stream), { preconnect: fetch.preconnect });
+  const adapter = new Binance(fetcher, () => time);
+  await expect(adapter.pairs()).rejects.toMatchObject({ status: 200, definite: false });
+  expect(cancelled).toBe(true);
+});
+
 class FakeVenue implements MarketVenue, TradingVenue {
   now = time;
   submitted: Order[] = [];
